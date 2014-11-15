@@ -110,43 +110,55 @@ public:
 
 	CCamera()
 	{
-		P0.Set(0.0f, 0.0f, 0.0f); At.Set(0.0f, 0.0f, -1.0f); Up.Set(0.0f, 1.0f, 0.0f); AngX = 0.0f; AngY = 0.0f;  AngZ = 0.0f;
+		P0 = CPoint3D(0.0f, 0.0f, 0.0f); 
+		At = CPoint3D(0.0f, 0.0f, -1.0f); 
+		Up = CPoint3D(0.0f, 1.0f, 0.0f); 
+		AngX = 0.0f; 
+		AngY = 0.0f;  
+		AngZ = 0.0f;
 	}
 
 	CCamera(CPoint3D p0, CPoint3D p, CPoint3D up)
 	{
-		P0 = p0; At = p; Up = up; AngX = 0.0f; AngY = 0.0f;  AngZ = 0.0f;
+		P0 = p0; At = p; Up = up; 
+		AngX = 0.0f; AngY = 0.0f; AngZ = 0.0f;
 	}
 
 	void Set(CPoint3D p0, CPoint3D p, CPoint3D up)
 	{
-		P0 = p0; At = p; Up = up; AngX = 0.0f; AngY = 0.0f;  AngZ = 0.0f;
+		P0 = p0; At = p; Up = up; 
+		AngX = 0.0f; AngY = 0.0f;  AngZ = 0.0f;
 	}
 
-	//TODO // RotateCamera can be a method of CCamera
-	void RotateCamera(int rotMode, float ang) {
-		
+	void MoveForward(float delta) {
+		CPoint3D d = (At - P0).Dir() * delta;
+		At = At + d;
+		P0 = P0 + d;
 	}
 
-	void Forward(float delta) {
-		CPoint3D d = -(At - P0).Dir() * delta;
-		glTranslatef(d.x, d.y, d.z);
-		//At = At + d;
-		//P0 = P0 + d;
+	void MoveRight(float delta) {
+		CPoint3D d = Right() * delta;
+		At = At + d;
+		P0 = P0 + d;
 	}
 
 	void Pitch(float ang) {
-		RotateCam(ang, Right());
+		AngX += ang;
+		
 		CPoint3D rotDir = -(At - P0).Dir();
+		At = P0 + (At - P0).RotateDeg(ang, Up);
+		Up = Up.RotateDeg(ang, rotDir);
 	}
 
 	void Yaw(float ang) {
-		RotateCam(ang, Up);
-		At = P0 + (At - P0).RotateDeg(ang, Right());
+		AngY += ang;
+
+		At = P0 + (At - P0).RotateDeg(ang, -Right());
 	}
 
 	void Roll(float ang) {
-		RotateCam(ang, (At - P0).Dir());
+		AngZ -= ang;
+
 		Up = Up.RotateDeg(ang, Right());
 	}
 
@@ -159,8 +171,11 @@ public:
 
 	void Update()
 	{
-		glLoadIdentity();
-		LookAt();
+		glRotatef(-AngX, 1.0, 0.0, 0.0);
+		glRotatef(-AngY, 0.0, 1.0, 0.0);
+		glRotatef(-AngZ, 0.0, 0.0, 1.0);
+		glTranslatef(-P0.x, -P0.y, -P0.z);
+
 	}
 	string ToString()
 	{
@@ -171,16 +186,8 @@ private:
 	CPoint3D Right() {
 		return (At - P0).CrossProduct(Up).Dir();
 	}
-
-	void RotateCam(float ang, CPoint3D axis) {
-		glTranslatef(P0.x, P0.y, P0.z);
-		glRotatef(ang, axis.x, axis.y, axis.z);
-		glColor3f(1.0f, 0.1f, 0.1f);
-		glutSolidSphere(0.05, 10, 10);
-		glTranslatef(-P0.x, -P0.y, -P0.z);
-	}
-
 };
+
 float angle = 0.0;
 float x = 0.0f, y = 1.75f, z = 5.0f;
 float lx = 0.0f, ly = 0.0f, lz = -1.0f;
@@ -257,8 +264,6 @@ void drawSnowMan() {
 	glutSolidCone(0.08f, 0.5f, 10, 2);
 }
 
-
-
 GLuint createDL() {
 	GLuint snowManDL, loopDL;
 
@@ -282,13 +287,14 @@ GLuint createDL() {
 
 	return(loopDL);
 }
-
+float i = 0.0f;
 
 void renderScene(void) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glLoadIdentity();
+	cam.Update();
 
 	// Draw ground
-
 	glColor3f(0.9f, 0.9f, 0.9f);
 	glBegin(GL_QUADS);
 	glVertex3f(-100.0f, 0.0f, -100.0f);
@@ -298,7 +304,6 @@ void renderScene(void) {
 	glEnd();
 
 	// Draw 36 SnowMen
-
 	glCallList(DLid);
 	frame++;
 	time = glutGet(GLUT_ELAPSED_TIME);
@@ -308,6 +313,7 @@ void renderScene(void) {
 		timebase = time;
 		frame = 0;
 	}
+
 	glutSwapBuffers();
 }
 
@@ -328,35 +334,35 @@ void MoveCamera(int diretion, ToDo) {
 
 float da = 0.5f;
 
+float anglDelta = 2.5;
+const float MIN_ANGL = 0.001;
+float distDelta = 2.0;
+const float MIN_DIST = 0.001;
+float max(float a, float b) { return (a > b) ? a : b; }
 void inputKey(unsigned char c, int x, int y) {
 	int a = c;
 	if ('A' <= c && c <= 'Z') z = z - 'A' + 'a';
 	switch (c) {
-	case 'w': // UP
-		cam.Forward(2.5);
+	case 'w': cam.MoveForward(distDelta); break;   // Forward
+	case 's': cam.MoveForward(-distDelta); break;  // Backward
+	case 'd': cam.MoveRight(distDelta); break;     // Right
+	case 'a': cam.MoveRight(-distDelta); break;    // Left
+	case 'i': cam.Pitch(anglDelta); break;         // Look up
+	case 'k': cam.Pitch(-anglDelta); break;        // Look down
+	case 'l': cam.Yaw(-anglDelta); break;          // Look right
+	case 'j': cam.Yaw(anglDelta); break;           // Look left
+	case 'o': cam.Roll(anglDelta); break;          // Roll CW
+	case 'u': cam.Roll(-anglDelta);	break;         // Roll CCW
+	case 'm':
+		anglDelta = (anglDelta > 1) ? anglDelta + 0.5 : (1/0.6) * anglDelta;
+		distDelta = (distDelta > 1) ? distDelta + 0.5 : (1/0.6) * distDelta;
 		break;
-	case 'd': // RIGHT
-		cam.Yaw(2.5);
-		break;
-	case 's': // DOWN
-		cam.Forward(-2.5);
-		break;
-	case 'a': // LEFT
-		cam.Yaw(-2.5);
-		break; 
-	case 'i':
-		cam.Pitch(2.5);
-		break;
-	case 'k':
-		cam.Pitch(-2.5);
-		break;
-	case 'j':
-		cam.Roll(2.5);
-		break;
-	case 'l':
-		cam.Roll(-2.5);
+	case 'n':
+		anglDelta = (anglDelta > 1) ? anglDelta - 0.5 : max(MIN_ANGL, 0.6 * anglDelta);
+		distDelta = (distDelta > 1) ? distDelta - 0.5 : max(MIN_DIST, 0.6 * distDelta);
 		break;
 	}
+	//cout << "angle = " << to_string(anglDelta) << ", dist = " << to_string(distDelta) << "\n";
 }
 
 void mouse(int button, int state, int x, int y)
@@ -406,6 +412,7 @@ int main(int argc, char **argv)
 
 	return(0);
 }
+
 
 
 
