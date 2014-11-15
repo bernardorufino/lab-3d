@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <string>
+#include <algorithm>
 #include <iostream>
 #include <GL/glut.h>
 using namespace std;
@@ -20,6 +21,9 @@ using namespace std;
 #define DIRZ 6
 #define FRONT 7
 #define BACK 8
+
+float minf(float a, float b) { return (a < b) ? a : b; }
+float maxf(float a, float b) { return (a > b) ? a : b; }
 
 class CPoint3D {
 public:
@@ -66,7 +70,7 @@ public:
 
 	float Abs() 
 	{
-		return sqr(x) + sqr(y) + sqr(z);
+		return sqrt(sqr(x) + sqr(y) + sqr(z));
 	}
 
 	CPoint3D operator +(CPoint3D p)
@@ -237,7 +241,7 @@ void initScene() {
 void drawSnowMan() {
 
 
-	glColor3f(1.0f, 1.0f, 1.0f);
+	glColor3f(0.6f, 0.65f, 0.75f);
 
 	// Draw Body	
 	glTranslatef(0.0f, 0.75f, 0.0f);
@@ -263,25 +267,82 @@ void drawSnowMan() {
 	glutSolidCone(0.08f, 0.5f, 10, 2);
 }
 
+void hsv2rgb(float h, float s, float v, float* r, float* g, float* b) {
+	int d = (int) (h * 6);
+	float e = -v*s + v;
+	float f[] = { v, -v*d*s + v, e, e, v*d*s + e, v };
+	*r = f[d];
+	*g = f[(4 + d) % 6];
+	*b = f[(2 + d) % 6];
+}
+
+CPoint3D xy2rgb(float x, float y) {
+	CPoint3D rgb;
+	hsv2rgb(x, y, 0.7, &rgb.x, &rgb.y, &rgb.z);
+	rgb = rgb * (minf(0.8, rgb.Abs()) / rgb.Abs());
+	return rgb;
+}
+
+void drawModel1(float x, float y) {
+	CPoint3D rgb = xy2rgb(x, y);
+	glColor3f(rgb.x, rgb.y, rgb.z);
+
+	glTranslatef(0.0f, 1.0f, 0.0f);
+	glutSolidOctahedron();
+	
+}
+
+void drawModel2(float x, float y) {
+	CPoint3D rgb = xy2rgb(x, y);
+	glColor3f(rgb.x, rgb.y, rgb.z);
+
+	glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+	for (int i = 0; i < 4; i++) {
+		float r = 0.8f + i * 0.4f;
+		float R = 1.0f + i * 0.1f;
+		glTranslatef(0.0f, 0.0f, -r);
+		glutSolidTorus(r, R, 30, 30);
+	}
+}
+
 GLuint createDL() {
-	GLuint snowManDL, loopDL;
+	GLuint loopDL;
 
-	snowManDL = glGenLists(1);
 	loopDL = glGenLists(1);
-
-	glNewList(snowManDL, GL_COMPILE);
-	drawSnowMan();
-	glEndList();
 
 	glNewList(loopDL, GL_COMPILE);
 
 	for (int i = -3; i < 3; i++)
-		for (int j = -3; j < 3; j++) {
-		glPushMatrix();
-		glTranslatef(i*10.0f, 0, j * 10.0f);
-		glCallList(snowManDL);
-		glPopMatrix();
+	{
+		for (int j = -3; j < 3; j++)
+		{
+			glPushMatrix();
+			glTranslatef(i * 10.0f, 0, j * 10.0f);
+			drawSnowMan();
+			glPopMatrix();
 		}
+	}
+
+	for (int ia = 3, ib = 5, i = ia; i <= ib; i++) {
+		for (int ja = -3, jb = 2, j = ja; j <= jb; j++)
+		{
+			glPushMatrix();
+			glTranslatef(i * 10.0f, 0, j * 10.0f);
+			drawModel1((float)(i - ia) / (ib - ia), (float)(j - ja) / (jb - ja));
+			glPopMatrix();
+		}
+	}
+
+	for (int ia = 6, ib = 8, i = ia; i <= ib; i++) {
+		for (int ja = -3, jb = 2, j = ja; j <= jb; j++)
+		{
+			glPushMatrix();
+			glTranslatef(i * 10.0f, 0, j * 10.0f);
+			drawModel2((float) (i - ia) / (ib - ia), (float) (j - ja) / (jb - ja));
+			glPopMatrix();
+		}
+	}
+
 	glEndList();
 
 	return(loopDL);
@@ -294,7 +355,7 @@ void renderScene(void) {
 	cam.Update();
 
 	// Draw ground
-	glColor3f(0.9f, 0.9f, 0.9f);
+	glColor3f(0.65f, 0.65f, 0.5f);
 	glBegin(GL_QUADS);
 	glVertex3f(-100.0f, 0.0f, -100.0f);
 	glVertex3f(-100.0f, 0.0f, 100.0f);
@@ -302,7 +363,7 @@ void renderScene(void) {
 	glVertex3f(100.0f, 0.0f, -100.0f);
 	glEnd();
 
-	// Draw 36 SnowMen
+	// Draw models
 	glCallList(DLid);
 	frame++;
 	time = glutGet(GLUT_ELAPSED_TIME);
@@ -337,7 +398,6 @@ float anglDelta = 2.5;
 const float MIN_ANGL = 0.001;
 float distDelta = 2.0;
 const float MIN_DIST = 0.001;
-float max(float a, float b) { return (a > b) ? a : b; }
 void inputKey(unsigned char c, int x, int y) {
 	int a = c;
 	if ('A' <= c && c <= 'Z') z = z - 'A' + 'a';
@@ -357,8 +417,8 @@ void inputKey(unsigned char c, int x, int y) {
 		distDelta = (distDelta > 1) ? distDelta + 0.5 : (1/0.6) * distDelta;
 		break;
 	case 'n':
-		anglDelta = (anglDelta > 1) ? anglDelta - 0.5 : max(MIN_ANGL, 0.6 * anglDelta);
-		distDelta = (distDelta > 1) ? distDelta - 0.5 : max(MIN_DIST, 0.6 * distDelta);
+		anglDelta = (anglDelta > 1) ? anglDelta - 0.5 : maxf(MIN_ANGL, 0.6 * anglDelta);
+		distDelta = (distDelta > 1) ? distDelta - 0.5 : maxf(MIN_DIST, 0.6 * distDelta);
 		break;
 	}
 	//cout << "angle = " << to_string(anglDelta) << ", dist = " << to_string(distDelta) << "\n";
