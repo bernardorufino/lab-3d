@@ -234,7 +234,6 @@ void initScene() {
 	DLid = createDL();
 }
 
-
 void drawSnowMan() {
 
 
@@ -389,7 +388,29 @@ void mouse(int button, int state, int x, int y)
 	}
 }
 
+void initlights(void)
+{
+	GLfloat ambient[] =			{ 0.2, 0.2, 0.2, 1.0 };
+	GLfloat position[] =		{ 3.0, 3.0, 0.0, 2.0 };
+	GLfloat mat_diffuse[] =		{ 0.3, 0.3, 0.3, 1.0 };
+	GLfloat mat_specular[] =	{ 0.3, 0.3, 0.3, 1.0 };
 
+	GLfloat mat_shininess[] =	{ 50.0 };
+
+	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT0);
+
+	glLightfv(GL_LIGHT0, GL_AMBIENT, ambient);
+	glLightfv(GL_LIGHT0, GL_POSITION, position);
+
+	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_diffuse);
+	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
+	glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
+
+	glColorMaterial(GL_FRONT_AND_BACK, GL_EMISSION);
+	glEnable(GL_COLOR_MATERIAL);
+	glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
+}
 
 int main(int argc, char **argv)
 {
@@ -398,6 +419,8 @@ int main(int argc, char **argv)
 	glutInitWindowPosition(100, 100);
 	glutInitWindowSize(400, 400);
 	glutCreateWindow("Lab4");
+
+	initlights();
 
 	initScene();
 
@@ -412,7 +435,5 @@ int main(int argc, char **argv)
 
 	return(0);
 }
-
-
 
 
