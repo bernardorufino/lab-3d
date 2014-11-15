@@ -21,6 +21,7 @@ GLdouble mvmatrix[16], projmatrix[16];
 float vAng=40.0f, asp=1.0f, nearD=0.2f, farD=40.0f;
 bool perspectiva = false;
 bool fillCurve = true;
+bool showControls = false;
 
 point3D_type* ctrlpoints;
 int M, N;
@@ -338,12 +339,12 @@ char* repeat(char c, int n) {
 
 void BezierRecursiveSubdivision(point3D_type* a, GLint n, GLint m, int depth=0, char* orig="")
 {  
-	int maxd = 30;
-	if (depth > maxd) {
+	int maxd = 50;
+	if (depth >= maxd) {
 		cout << repeat(' ', depth) << "HALT!\n";
 	}
 
-	if (depth > maxd || Limit(a, n, m, strcat(repeat(' ', depth), orig))) 
+	if (depth >= maxd || Limit(a, n, m, strcat(repeat(' ', depth), orig))) 
 	{
 		DrawBezier(a, n, m, n, m);
 	}
@@ -400,6 +401,21 @@ int frame, time, timebase = 0;
 char s[30];
 CCamera cam;
 
+void DrawControlPoints(point3D_type* points, int n, int m) {
+	for (int j = 0; j < m; j++) 
+	{
+		for (int i = 0; i < n; i++)
+		{
+			point3D_type p = points[j*n + i];
+			glPushMatrix();
+			glTranslatef(p.x, p.y, p.z);
+			glColor3f(1.0f, 0.2f, 0.2f);
+			glutSolidSphere(0.1, 10, 10);
+			glPopMatrix();
+		}
+	}
+}
+
 void display(void)
 {  
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -416,6 +432,11 @@ void display(void)
 		{
 			tolerance = sqr(TOL * 2);
 			gluPerspective(vAng, asp, nearD, farD);
+		}
+
+		if (showControls) 
+		{
+			DrawControlPoints(ctrlpoints, N, M);
 		}
 
 		BezierRecursiveSubdivision(ctrlpoints, N, M);
@@ -525,6 +546,7 @@ void inputKey(unsigned char c, int x, int y) {
 		anglDelta = (anglDelta > 1) ? anglDelta - 0.5 : max(MIN_ANGL, 0.6 * anglDelta);
 		break;
 	case 'f': fillCurve = !fillCurve; break;
+	case 'g': showControls = !showControls; break;
 	}
 	glutPostRedisplay();
 	//cout << "angle = " << to_string(anglDelta) << ", dist = " << to_string(distDelta) << "\n";
